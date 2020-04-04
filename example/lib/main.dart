@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_boost/flutter_boost.dart';
+import 'flutter_boost_example_route.dart';
+import 'flutter_boost_example_route_helper.dart';
 import 'simple_page_widgets.dart';
 
 void main() {
@@ -16,55 +18,50 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
 
-    FlutterBoost.singleton.registerPageBuilders({
-      'embeded': (pageName, params, _)=>EmbededFirstRouteWidget(),
-      'first': (pageName, params, _) => FirstRouteWidget(),
-      'firstFirst': (pageName, params, _) => FirstFirstRouteWidget(),
-      'second': (pageName, params, _) => SecondRouteWidget(),
-      'secondStateful': (pageName, params, _) => SecondStatefulRouteWidget(),
-      'tab': (pageName, params, _) => TabRouteWidget(),
-      'platformView': (pageName, params, _) => PlatformRouteWidget(),
-      'flutterFragment': (pageName, params, _) => FragmentRouteWidget(params),
-      ///可以在native层通过 getContainerParams 来传递参数
-      'flutterPage': (pageName, params, _) {
-        print("flutterPage params:$params");
-
-        return FlutterRouteWidget(params:params);
-      },
+    ///native=>flutter
+    FlutterBoost.singleton.registerDefaultPageBuilder(
+        (String pageName, Map params, String uniqueId) {
+      final routeResult = getRouteResult(
+        name: pageName,
+        arguments: params?.map(
+            (key, value) => MapEntry<String, dynamic>(key.toString(), value)),
+      );
+      return routeResult.widget ?? NoRouteWiget();
     });
-    FlutterBoost.singleton.addBoostNavigatorObserver(TestBoostNavigatorObserver());
+    FlutterBoost.singleton.addBoostNavigatorObserver(FFNavigatorObserver(
+        routeChange: (
+      Route newRoute,
+      Route oldRoute,
+    ) {}));
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Flutter Boost example',
-        builder: FlutterBoost.init(postPush: _onRoutePushed),
-        home: Container(
-            color:Colors.white
-        ));
+      title: 'Flutter Boost example',
+      builder: FlutterBoost.init(postPush: _onRoutePushed),
+      home: Container(color: Colors.white),
+
+      ///flutter=>flutter
+      onGenerateRoute: (settings) => onGenerateRouteHelper(
+        settings,
+        notFoundFallback: NoRouteWiget(),
+      ),
+    );
   }
 
   void _onRoutePushed(
-      String pageName, String uniqueId, Map params, Route route, Future _) {
-  }
-}
-class TestBoostNavigatorObserver extends NavigatorObserver{
-  void didPush(Route<dynamic> route, Route<dynamic> previousRoute) {
-
-    print("flutterboost#didPush");
-  }
-
-  void didPop(Route<dynamic> route, Route<dynamic> previousRoute) {
-    print("flutterboost#didPop");
-  }
-
-  void didRemove(Route<dynamic> route, Route<dynamic> previousRoute) {
-    print("flutterboost#didRemove");
-  }
-
-  void didReplace({Route<dynamic> newRoute, Route<dynamic> oldRoute}) {
-    print("flutterboost#didReplace");
-  }
+      String pageName, String uniqueId, Map params, Route route, Future _) {}
 }
 
+class NoRouteWiget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(),
+      body: Center(
+        child: Text('no route found!'),
+      ),
+    );
+  }
+}
